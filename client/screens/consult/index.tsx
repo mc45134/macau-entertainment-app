@@ -177,13 +177,19 @@ export default function ConsultScreen() {
 
   const toggleInput = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowInput((prev) => {
-      if (!prev) {
-        setTimeout(() => inputRef.current?.focus(), 300);
-      }
-      return !prev;
-    });
+    setShowInput((prev) => !prev);
   };
+
+  // 当 showInput 变为 true 时，自动聚焦并弹出键盘
+  useEffect(() => {
+    if (showInput && inputRef.current) {
+      // 延迟聚焦，等待输入框渲染完成
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [showInput]);
 
   // ===== 渲染子页面内容 =====
   const renderConsultTab = () => (
@@ -440,8 +446,11 @@ export default function ConsultScreen() {
                   placeholderTextColor="#94A3B8"
                   value={inputText}
                   onChangeText={setInputText}
-                  multiline
+                  multiline={false}
                   maxLength={500}
+                  blurOnSubmit={false}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSend}
                 />
                 <TouchableOpacity
                   style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
