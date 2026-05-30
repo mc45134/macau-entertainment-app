@@ -385,11 +385,7 @@ export default function ConsultScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
+      <View style={styles.container}>
         {/* 顶部 Hero 区域 */}
         <View style={styles.heroHeader}>
           <View style={styles.heroInner}>
@@ -422,7 +418,7 @@ export default function ConsultScreen() {
         </View>
 
         {/* 子页面内容 */}
-        <View style={[styles.contentArea, isKeyboardVisible && styles.contentAreaKeyboardVisible]}>
+        <View style={[styles.contentArea, isKeyboardVisible && styles.contentAreaKeyboard]}>
           {renderTabContent()}
         </View>
 
@@ -467,7 +463,7 @@ export default function ConsultScreen() {
             )}
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }
@@ -579,7 +575,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // 键盘弹出时内容区域样式
-  contentAreaKeyboardVisible: {
+  contentAreaKeyboard: {
     flex: 1,
   },
 
