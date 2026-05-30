@@ -5,15 +5,12 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
   Keyboard,
   StyleSheet,
-  LayoutAnimation,
   Image,
   FlatList,
-  Selection,
+  ActivityIndicator,
+  InteractionManager,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome6 } from "@expo/vector-icons";
@@ -39,33 +36,8 @@ export default function ConsultScreen() {
   const [sessionId] = useState(() => "sess_" + Math.random().toString(36).substring(2, 10));
   const [recommendations, setRecommendations] = useState<{ tags: string[]; items: { title: string; reason: string }[] } | null>(null);
   const [userInterests, setUserInterests] = useState<string[]>([]);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
-
-  // 监听键盘显示/隐藏
-  useEffect(() => {
-    const showListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => {
-        setIsKeyboardVisible(true);
-        setKeyboardHeight(e.endCoordinates.height);
-      }
-    );
-    const hideListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => {
-        setIsKeyboardVisible(false);
-        setKeyboardHeight(0);
-      }
-    );
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, []);
 
   // 子页面数据
   const [headlines, setHeadlines] = useState<any[]>([]);
@@ -148,7 +120,6 @@ export default function ConsultScreen() {
   }, []);
 
   const handleTabChange = (tab: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveTab(tab);
     if (tab !== "consult") {
       fetchTabData(tab);
@@ -178,14 +149,16 @@ export default function ConsultScreen() {
 
   const handleShowInput = () => {
     setShowInput(true);
-    // 等待UI渲染完成后，手动聚焦
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 300);
+    // 等待所有动画和布局完成后再聚焦，避免键盘闪退
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    });
   };
 
   const handleHideInput = () => {
-    inputRef.current?.blur();
+    Keyboard.dismiss();
     setShowInput(false);
   };
 
@@ -202,10 +175,7 @@ export default function ConsultScreen() {
     <ScrollView
       ref={scrollViewRef}
       style={styles.mainScroll}
-      contentContainerStyle={[
-        styles.mainContent,
-        isKeyboardVisible && styles.mainContentKeyboard,
-      ]}
+      contentContainerStyle={styles.mainContent}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -396,7 +366,7 @@ export default function ConsultScreen() {
   };
 
   return (
-    <Screen>
+    <Screen safeAreaEdges={["top", "left", "right"]}>
       <View style={styles.container}>
         {/* 顶部 Hero 区域 */}
         <View style={styles.heroHeader}>
@@ -430,7 +400,7 @@ export default function ConsultScreen() {
         </View>
 
         {/* 子页面内容 */}
-        <View style={[styles.contentArea, isKeyboardVisible && styles.contentAreaKeyboard]}>
+        <View style={styles.contentArea}>
           {renderTabContent()}
         </View>
 
@@ -440,7 +410,6 @@ export default function ConsultScreen() {
             style={[
               styles.bottomSection,
               { paddingBottom: insets.bottom || 12 },
-              isKeyboardVisible && styles.bottomSectionKeyboard,
             ]}
           >
             {showInput ? (
@@ -589,10 +558,6 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
   },
-  // 键盘弹出时内容区域样式
-  contentAreaKeyboard: {
-    flex: 1,
-  },
 
   // Main Scroll (consult tab)
   mainScroll: {
@@ -602,12 +567,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
-  },
-  // 键盘弹出时内容底部留空间给输入框
-  mainContentKeyboard: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 80,
   },
 
   // AI Card - White with gold accent header
@@ -917,24 +876,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
     backgroundColor: MACAU_WARM,
-  },
-  // 键盘弹出时底部输入区域 - 绝对定位覆盖内容
-  bottomSectionKeyboard: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    backgroundColor: MACAU_WARM,
-    borderTopWidth: 1,
-    borderTopColor: MACAU_GOLD,
-    shadowColor: MACAU_GREEN,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
   },
 
   // Ask Button (collapsed) - Gold styled
