@@ -38,8 +38,26 @@ export default function ConsultScreen() {
   const [sessionId] = useState(() => "sess_" + Math.random().toString(36).substring(2, 10));
   const [recommendations, setRecommendations] = useState<{ tags: string[]; items: { title: string; reason: string }[] } | null>(null);
   const [userInterests, setUserInterests] = useState<string[]>([]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+
+  // 监听键盘显示/隐藏
+  useEffect(() => {
+    const showListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setIsKeyboardVisible(true)
+    );
+    const hideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
 
   // 子页面数据
   const [headlines, setHeadlines] = useState<any[]>([]);
@@ -165,7 +183,10 @@ export default function ConsultScreen() {
     <ScrollView
       ref={scrollViewRef}
       style={styles.mainScroll}
-      contentContainerStyle={styles.mainContent}
+      contentContainerStyle={[
+        styles.mainContent,
+        isKeyboardVisible && styles.mainContentKeyboardVisible,
+      ]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -234,26 +255,28 @@ export default function ConsultScreen() {
         </View>
       )}
 
-      {/* 常见问题区域 */}
-      <View style={styles.faqSection}>
-        <Text style={styles.faqTitle}>常见问题</Text>
-        <View style={styles.faqGrid}>
-          {quickQuestions.map((q, i) => (
-            <TouchableOpacity
-              key={i}
-              style={styles.faqCard}
-              onPress={() => handleQuickQuestion(q.text)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.faqIconWrap, { backgroundColor: `${q.color}15` }]}>
-                <FontAwesome6 name={q.icon as any} size={16} color={q.color} />
-              </View>
-              <Text style={styles.faqText} numberOfLines={1}>{q.text}</Text>
-              <FontAwesome6 name="chevron-right" size={10} color="#CBD5E1" />
-            </TouchableOpacity>
-          ))}
+      {/* 常见问题区域 - 键盘弹出时隐藏 */}
+      {!isKeyboardVisible && (
+        <View style={styles.faqSection}>
+          <Text style={styles.faqTitle}>常见问题</Text>
+          <View style={styles.faqGrid}>
+            {quickQuestions.map((q, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.faqCard}
+                onPress={() => handleQuickQuestion(q.text)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.faqIconWrap, { backgroundColor: `${q.color}15` }]}>
+                  <FontAwesome6 name={q.icon as any} size={16} color={q.color} />
+                </View>
+                <Text style={styles.faqText} numberOfLines={1}>{q.text}</Text>
+                <FontAwesome6 name="chevron-right" size={10} color="#CBD5E1" />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 
@@ -396,9 +419,15 @@ export default function ConsultScreen() {
           {renderTabContent()}
         </View>
 
-        {/* 底部输入区域 (仅咨询Tab显示) */}
+        {/* 底部输入区域 (仅咨询Tab显示) - 键盘弹出时浮在上方 */}
         {activeTab === "consult" && (
-          <View style={[styles.bottomSection, { paddingBottom: insets.bottom || 12 }]}>
+          <View
+            style={[
+              styles.bottomSection,
+              { paddingBottom: insets.bottom || 12 },
+              isKeyboardVisible && styles.bottomSectionKeyboardVisible,
+            ]}
+          >
             {showInput ? (
               <View style={styles.inputRow}>
                 <TextInput
@@ -551,6 +580,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  // 键盘弹出时增加底部内边距，防止内容被浮动输入框遮挡
+  mainContentKeyboardVisible: {
+    paddingBottom: 100,
   },
 
   // AI Card - White with gold accent header
@@ -859,6 +892,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     backgroundColor: MACAU_WARM,
+  },
+  // 键盘弹出时 - 浮在内容上方，覆盖常见问题
+  bottomSectionKeyboardVisible: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: MACAU_WARM,
+    borderTopWidth: 1,
+    borderTopColor: MACAU_GOLD,
+    shadowColor: MACAU_GREEN,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   // Ask Button (collapsed) - Gold styled
