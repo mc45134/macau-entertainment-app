@@ -175,21 +175,23 @@ export default function ConsultScreen() {
     sendMessage(msg);
   };
 
-  const toggleInput = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowInput((prev) => !prev);
+  const handleShowInput = () => {
+    setShowInput(true);
+    // autoFocus 会自动聚焦，不需要 setTimeout
   };
 
-  // 当 showInput 变为 true 时，自动聚焦并弹出键盘
-  useEffect(() => {
-    if (showInput && inputRef.current) {
-      // 延迟聚焦，等待输入框渲染完成
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 150);
-      return () => clearTimeout(timer);
+  const handleHideInput = () => {
+    inputRef.current?.blur();
+    setShowInput(false);
+  };
+
+  const toggleInput = () => {
+    if (showInput) {
+      handleHideInput();
+    } else {
+      handleShowInput();
     }
-  }, [showInput]);
+  };
 
   // ===== 渲染子页面内容 =====
   const renderConsultTab = () => (
@@ -451,6 +453,7 @@ export default function ConsultScreen() {
                   blurOnSubmit={false}
                   returnKeyType="send"
                   onSubmitEditing={handleSend}
+                  autoFocus={showInput}
                 />
                 <TouchableOpacity
                   style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
