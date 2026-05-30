@@ -13,6 +13,7 @@ import {
   LayoutAnimation,
   Image,
   FlatList,
+  Selection,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome6 } from "@expo/vector-icons";
@@ -177,7 +178,10 @@ export default function ConsultScreen() {
 
   const handleShowInput = () => {
     setShowInput(true);
-    // autoFocus 会自动聚焦，不需要 setTimeout
+    // 等待UI渲染完成后，手动聚焦
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 300);
   };
 
   const handleHideInput = () => {
@@ -270,8 +274,8 @@ export default function ConsultScreen() {
         </View>
       )}
 
-      {/* 常见问题区域 - 键盘弹出时隐藏 */}
-      {!isKeyboardVisible && (
+      {/* 常见问题区域 - 输入框打开时隐藏（不管键盘是否弹出） */}
+      {!showInput && (
         <View style={styles.faqSection}>
           <Text style={styles.faqTitle}>常见问题</Text>
           <View style={styles.faqGrid}>
@@ -453,7 +457,6 @@ export default function ConsultScreen() {
                   blurOnSubmit={false}
                   returnKeyType="send"
                   onSubmitEditing={handleSend}
-                  autoFocus={showInput}
                 />
                 <TouchableOpacity
                   style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
