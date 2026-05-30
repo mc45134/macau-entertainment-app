@@ -38,8 +38,33 @@ export default function ConsultScreen() {
   const [sessionId] = useState(() => "sess_" + Math.random().toString(36).substring(2, 10));
   const [recommendations, setRecommendations] = useState<{ tags: string[]; items: { title: string; reason: string }[] } | null>(null);
   const [userInterests, setUserInterests] = useState<string[]>([]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+
+  // 监听键盘显示/隐藏
+  useEffect(() => {
+    const showListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        setIsKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setIsKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
 
   // 子页面数据
   const [headlines, setHeadlines] = useState<any[]>([]);
@@ -165,7 +190,10 @@ export default function ConsultScreen() {
     <ScrollView
       ref={scrollViewRef}
       style={styles.mainScroll}
-      contentContainerStyle={styles.mainContent}
+      contentContainerStyle={[
+        styles.mainContent,
+        isKeyboardVisible && styles.mainContentKeyboard,
+      ]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -234,26 +262,28 @@ export default function ConsultScreen() {
         </View>
       )}
 
-      {/* 常见问题区域 */}
-      <View style={styles.faqSection}>
-        <Text style={styles.faqTitle}>常见问题</Text>
-        <View style={styles.faqGrid}>
-          {quickQuestions.map((q, i) => (
-            <TouchableOpacity
-              key={i}
-              style={styles.faqCard}
-              onPress={() => handleQuickQuestion(q.text)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.faqIconWrap, { backgroundColor: `${q.color}15` }]}>
-                <FontAwesome6 name={q.icon as any} size={16} color={q.color} />
-              </View>
-              <Text style={styles.faqText} numberOfLines={1}>{q.text}</Text>
-              <FontAwesome6 name="chevron-right" size={10} color="#CBD5E1" />
-            </TouchableOpacity>
-          ))}
+      {/* 常见问题区域 - 键盘弹出时隐藏 */}
+      {!isKeyboardVisible && (
+        <View style={styles.faqSection}>
+          <Text style={styles.faqTitle}>常见问题</Text>
+          <View style={styles.faqGrid}>
+            {quickQuestions.map((q, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.faqCard}
+                onPress={() => handleQuickQuestion(q.text)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.faqIconWrap, { backgroundColor: `${q.color}15` }]}>
+                  <FontAwesome6 name={q.icon as any} size={16} color={q.color} />
+                </View>
+                <Text style={styles.faqText} numberOfLines={1}>{q.text}</Text>
+                <FontAwesome6 name="chevron-right" size={10} color="#CBD5E1" />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 
@@ -357,8 +387,8 @@ export default function ConsultScreen() {
     <Screen>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* 顶部 Hero 区域 */}
         <View style={styles.heroHeader}>
@@ -392,7 +422,7 @@ export default function ConsultScreen() {
         </View>
 
         {/* 子页面内容 */}
-        <View style={styles.contentArea}>
+        <View style={[styles.contentArea, isKeyboardVisible && styles.contentAreaKeyboardVisible]}>
           {renderTabContent()}
         </View>
 
@@ -402,6 +432,7 @@ export default function ConsultScreen() {
             style={[
               styles.bottomSection,
               { paddingBottom: insets.bottom || 12 },
+              isKeyboardVisible && styles.bottomSectionKeyboard,
             ]}
           >
             {showInput ? (
@@ -547,6 +578,10 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
   },
+  // 键盘弹出时内容区域样式
+  contentAreaKeyboardVisible: {
+    flex: 1,
+  },
 
   // Main Scroll (consult tab)
   mainScroll: {
@@ -556,6 +591,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  // 键盘弹出时内容底部留空间给输入框
+  mainContentKeyboard: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 80,
   },
 
   // AI Card - White with gold accent header
@@ -865,6 +906,24 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
     backgroundColor: MACAU_WARM,
+  },
+  // 键盘弹出时底部输入区域 - 绝对定位覆盖内容
+  bottomSectionKeyboard: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: MACAU_WARM,
+    borderTopWidth: 1,
+    borderTopColor: MACAU_GOLD,
+    shadowColor: MACAU_GREEN,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   // Ask Button (collapsed) - Gold styled
