@@ -1,5 +1,6 @@
 import { Router } from "express";
 import axios from "axios";
+import { isEntertainmentRelated, getFilterResponse } from "../services/macauSkill";
 
 const router = Router();
 
@@ -135,6 +136,16 @@ router.post("/", async (req, res) => {
 
     if (!message) {
       res.status(400).json({ error: "Message is required" });
+      return;
+    }
+
+    // 澳门娱乐内容过滤
+    if (!isEntertainmentRelated(message)) {
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache");
+      res.write(`data: ${JSON.stringify({ type: "answer", content: getFilterResponse() })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
       return;
     }
 
