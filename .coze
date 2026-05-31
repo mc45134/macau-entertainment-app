@@ -5,6 +5,9 @@ template = "expo"
 version = "0.0.24"
 appliedPatches = [ ]
 
+[preview]
+preview_enable = "enabled"
+
 [dev]
 build = [ "bash", ".cozeproj/scripts/dev_build.sh" ]
 run = [ "bash", ".cozeproj/scripts/dev_run.sh" ]
