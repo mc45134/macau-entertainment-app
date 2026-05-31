@@ -97,3 +97,4 @@ expo-env.d.ts
 *.tsbuildinfo
 node-compile-cache/
 .preview
+server/.env
