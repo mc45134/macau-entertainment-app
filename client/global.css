@@ -286,3 +286,12 @@
   --radius-4xl: calc(var(--radius) * 4); /* 2rem (32px) */
 }
 
+/* Font fallback for @expo/vector-icons to prevent FontFaceObserver timeout */
+@font-face {
+  font-family: 'FontAwesome';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Font Awesome 6 Free'), local('FontAwesome');
+}
+
