@@ -4,6 +4,7 @@ requires = [ "nodejs-24" ]
 template = "expo"
 version = "0.0.24"
 appliedPatches = [ ]
+project_type = "app"
 
 [preview]
 preview_enable = "enabled"
