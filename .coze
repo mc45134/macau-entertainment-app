@@ -17,3 +17,7 @@ validate = [ "bash", ".cozeproj/scripts/validate.sh" ]
 build = [ "bash", ".cozeproj/scripts/prod_build.sh" ]
 run = [ "bash", ".cozeproj/scripts/prod_run.sh" ]
 build_app_dir = "./client"
+
+[deploy.profile]
+kind = "service"
+flavor = "web"
