@@ -44,4 +44,9 @@ info "开始执行：pnpm run build (server)"
 (pushd "$ROOT_DIR/server" > /dev/null && pnpm run build; popd > /dev/null) || error "dist打包失败"
 info "==================== dist打包完成！====================\n"
 
+info "==================== 构建 Expo 前端 ===================="
+info "开始执行：pnpm run build:web (client)"
+(pushd "$ROOT_DIR/client" > /dev/null && pnpm run build:web; popd > /dev/null) || error "Expo 前端构建失败"
+info "==================== Expo 前端构建完成！====================\n"
+
 info "下一步：执行 ./prod_run.sh 启动服务"
