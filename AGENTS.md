@@ -290,3 +290,43 @@ cp .env.example .env
 - `.env` 文件已被 `.gitignore` 忽略，不会推送到 GitHub
 - 每个开发者需要单独配置自己的 API Keys
 - API Keys 请勿分享给他人
+
+## 预览链路
+
+### 预览判断依据
+
+项目是 **Web 预览型项目**，因为核心实现是 Expo Web 应用，用户需要通过浏览器直接预览和交互界面。
+
+### 预览入口
+
+使用 `coze dev` 命令启动预览服务，或直接执行：
+```bash
+bash .cozeproj/scripts/dev_run.sh
+```
+
+### 端口配置
+
+- **Expo 前端**：5000 端口（Web 预览主端口）
+- **Express 后端**：9091 端口
+
+### 预览链路实现
+
+根 `.coze` 配置的 `[dev]` 入口：
+- `dev.build`：`.cozeproj/scripts/dev_build.sh` - 安装依赖
+- `dev.run`：`.cozeproj/scripts/dev_run.sh` - 启动服务
+
+### 验证方式
+
+```bash
+# 检查端口响应
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/
+
+# 检查端口绑定（应为 *:5000，不是 127.0.0.1:5000）
+ss -lptn 'sport = :5000'
+```
+
+### 维护注意事项
+
+1. Expo 项目使用 Metro Bundler，启动后等待 "Waiting on http://localhost:5000" 出现
+2. 如遇网络错误 "TypeError: fetch failed"，脚本会自动切换离线模式重试
+3. 预览服务是常驻进程，不要手动终止
