@@ -259,3 +259,34 @@ import { Screen } from '../../../components/Screen';
 ## 本地开发
 
 `coze dev`：用来首次启动前后端服务，也可以用来重启前后端服务（该命令会先尝试杀掉占用端口的进程，再启动服务）
+
+## 环境变量配置
+
+首次克隆项目后，需要配置以下环境变量才能正常运行：
+
+### 1. 复制模板文件
+
+```bash
+cp .env.example .env
+```
+
+### 2. 配置必要的 API Keys
+
+编辑 `server/.env` 文件，填入以下信息：
+
+| 变量名 | 说明 | 获取方式 |
+|--------|------|----------|
+| `COZE_WORKLOAD_API_TOKEN` | Coze AI API Token | Coze 平台 → API 密钥管理 |
+| `ASSEMBLYAI_API_KEY` | 语音识别 API Key | AssemblyAI 官网注册获取 |
+
+### 3. Coze 平台部署
+
+如果使用 Coze 平台部署，需要在项目设置中添加环境变量：
+- `COZE_WORKLOAD_API_TOKEN`
+- `ASSEMBLYAI_API_KEY`
+
+### 注意事项
+
+- `.env` 文件已被 `.gitignore` 忽略，不会推送到 GitHub
+- 每个开发者需要单独配置自己的 API Keys
+- API Keys 请勿分享给他人

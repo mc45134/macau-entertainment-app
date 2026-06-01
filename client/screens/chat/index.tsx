@@ -9,12 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Screen } from "@/components/Screen";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useSafeRouter } from "@/hooks/useSafeRouter";
 import RNSSE from "react-native-sse";
+import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
 
 // API Base URL
 const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || "http://localhost:9091";
@@ -37,6 +40,15 @@ export default function ChatScreen() {
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
+  
+  // 录音相关
+  const [isRecording, setIsRecording] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  
+  // 语音播报相关
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
 
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<Message[]>(() => [
@@ -51,20 +63,158 @@ export default function ChatScreen() {
   const [currentStreamingContent, setCurrentStreamingContent] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const handleSendMessage = useCallback(async () => {
-    if (!inputText.trim() || isLoading) return;
+  // 请求麦克风权限
+  const requestMicPermission = async (): Promise<boolean> => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      return status === "granted";
+    } catch {
+      return false;
+    }
+  };
+
+  // 开始录音
+  const startRecording = async () => {
+    try {
+      // 检查权限
+      const hasPermission = await requestMicPermission();
+      if (!hasPermission) {
+        Alert.alert("权限不足", "需要麦克风权限才能使用语音输入");
+        return;
+      }
+
+      // 配置音频模式
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      // 开始录音
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      Alert.alert("录音失败", "无法开始录音，请重试");
+    }
+  };
+
+  // 停止录音并识别
+  const stopRecording = async () => {
+    if (!recordingRef.current) return;
+
+    try {
+      setIsRecording(false);
+      setIsRecognizing(true);
+
+      // 停止录音
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (!uri) {
+        throw new Error("No recording URI");
+      }
+
+      // 读取音频文件并转换为 base64
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        const base64data = (reader.result as string).split(",")[1];
+        
+        try {
+          // 调用后端 STT API
+          const sttResponse = await fetch(`${API_BASE}/api/v1/stt`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              audio: base64data,
+              mimeType: "audio/webm",
+            }),
+          });
+
+          const result = await sttResponse.json();
+
+          if (result.success && result.text) {
+            setInputText(result.text);
+            // 自动发送
+            handleSendMessage(result.text);
+          } else {
+            Alert.alert("识别失败", result.error || "无法识别语音内容");
+          }
+        } catch (error) {
+          console.error("STT error:", error);
+          Alert.alert("识别失败", "语音识别服务暂时不可用");
+        } finally {
+          setIsRecognizing(false);
+          // 重置音频模式
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        setIsRecognizing(false);
+        Alert.alert("识别失败", "无法读取录音文件");
+      };
+
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+      setIsRecording(false);
+      setIsRecognizing(false);
+      Alert.alert("录音失败", "停止录音时出错");
+    }
+  };
+
+  // 语音播报
+  const speakText = useCallback((text: string) => {
+    if (!autoPlayEnabled || isSpeaking) return;
+
+    // 停止之前的播报
+    Speech.stop();
+
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      language: "zh-CN",
+      pitch: 1.0,
+      rate: 1.0,
+      onDone: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+    });
+  }, [autoPlayEnabled, isSpeaking]);
+
+  // 停止语音播报
+  const stopSpeaking = () => {
+    Speech.stop();
+    setIsSpeaking(false);
+  };
+
+  // 发送消息（支持直接传入文字）
+  const handleSendMessage = useCallback(async (text?: string) => {
+    const messageToSend = text || inputText.trim();
+    if (!messageToSend || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputText.trim(),
+      content: messageToSend,
       timestamp: Date.now(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
+    if (!text) setInputText("");
     setIsLoading(true);
     setCurrentStreamingContent("");
+
+    // 停止语音播报
+    stopSpeaking();
 
     // Add temporary assistant message for streaming
     const tempAssistantId = (Date.now() + 1).toString();
@@ -145,6 +295,9 @@ export default function ChatScreen() {
                 : msg
             )
           );
+        } else {
+          // AI 回复完成，语音播报
+          speakText(fullResponse);
         }
       });
     } catch (error) {
@@ -158,7 +311,17 @@ export default function ChatScreen() {
       );
       setIsLoading(false);
     }
-  }, [inputText, isLoading, conversationId]);
+  }, [inputText, isLoading, conversationId, speakText]);
+
+  // 清理：组件卸载时停止语音
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync();
+      }
+    };
+  }, []);
 
   const renderMessage = useCallback(
     ({ item }: { item: Message }) => {
@@ -225,20 +388,14 @@ export default function ChatScreen() {
             <View style={styles.headerGoldDot} />
           </View>
           <TouchableOpacity
-            onPress={() => {
-              setMessages([
-                {
-                  id: "0",
-                  role: "assistant",
-                  content: "你好！我是澳门娱乐咨询助手，有什么可以帮到你的吗？",
-                  timestamp: Date.now(),
-                },
-              ]);
-              setConversationId(null);
-            }}
-            style={styles.clearButton}
+            onPress={() => setAutoPlayEnabled(!autoPlayEnabled)}
+            style={styles.soundToggle}
           >
-            <FontAwesome6 name="trash" size={18} color={MACAU_GOLD} />
+            <FontAwesome6 
+              name={autoPlayEnabled ? "volume-high" : "volume-xmark"} 
+              size={18} 
+              color={autoPlayEnabled ? MACAU_GOLD : "#999"} 
+            />
           </TouchableOpacity>
         </View>
 
@@ -268,9 +425,32 @@ export default function ChatScreen() {
               maxLength={500}
             />
           </View>
+          
+          {/* Voice Input Button */}
+          <TouchableOpacity
+            style={[
+              styles.voiceButton,
+              isRecording && styles.voiceButtonRecording,
+              isRecognizing && styles.voiceButtonDisabled,
+            ]}
+            onPress={isRecording ? stopRecording : startRecording}
+            disabled={isLoading || isRecognizing}
+          >
+            {isRecognizing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <FontAwesome6 
+                name={isRecording ? "stop" : "microphone"} 
+                size={18} 
+                color="#FFFFFF" 
+              />
+            )}
+          </TouchableOpacity>
+          
+          {/* Send Button */}
           <TouchableOpacity
             style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-            onPress={handleSendMessage}
+            onPress={() => handleSendMessage()}
             disabled={!inputText.trim() || isLoading}
           >
             {isLoading ? (
@@ -321,7 +501,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: MACAU_GOLD,
   },
-  clearButton: {
+  soundToggle: {
     padding: 8,
   },
   messagesList: {
@@ -407,7 +587,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginRight: 12,
+    marginRight: 8,
     maxHeight: 100,
     borderWidth: 1,
     borderColor: MACAU_GOLD_LIGHT,
@@ -415,6 +595,29 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 15,
     color: "#1A1A2E",
+  },
+  voiceButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: MACAU_GOLD,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+    shadowColor: MACAU_GOLD,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  voiceButtonRecording: {
+    backgroundColor: "#E53935",
+    shadowColor: "#E53935",
+  },
+  voiceButtonDisabled: {
+    backgroundColor: "#B8A88A",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   sendButton: {
     width: 48,

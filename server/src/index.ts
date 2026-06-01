@@ -1,7 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import chatRoutes from "./routes/chat";
 import entertainmentRoutes from "./routes/entertainment";
+import sttRoutes from "./routes/stt";
 
 const app = express();
 const port = process.env.PORT || 9091;
@@ -20,6 +22,7 @@ app.get('/api/v1/health', (req, res) => {
 // Routes
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/entertainment', entertainmentRoutes);
+app.use('/api/v1/stt', sttRoutes);
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}/`);
