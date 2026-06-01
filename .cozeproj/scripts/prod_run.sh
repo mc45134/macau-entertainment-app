@@ -12,13 +12,6 @@ PORT="${PORT:-5000}"
 info() {
   echo "[INFO] $1"
 }
-warn() {
-  echo "[WARN] $1"
-}
-error() {
-  echo "[ERROR] $1"
-  exit 1
-}
 
 # ============== 启动服务 ======================
 info "开始执行：pnpm run start (server)"
