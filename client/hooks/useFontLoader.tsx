@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { Font } from 'expo-font';
+import * as Font from 'expo-font';
 import { View, Text, ActivityIndicator } from 'react-native';
 
 export function useFontLoader() {
