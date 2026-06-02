@@ -42,5 +42,9 @@ if [ -f "$PREVIEW_DIR/post_install.py" ]; then
   python "$PREVIEW_DIR/post_install.py" || echo "post_install.py 执行失败"
 fi
 
+echo "==================== 构建 Server dist ===================="
+cd "$ROOT_DIR/server" && pnpm run build || echo "Server 构建失败"
+cd "$ROOT_DIR"
+
 echo "==================== 依赖安装完成！====================\n"
 echo "下一步：执行 ./dev_run.sh 启动服务"
